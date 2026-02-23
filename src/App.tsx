@@ -79,7 +79,17 @@ export default function App() {
       // 1. Get domains
       const domainsRes = await fetch(`${API_BASE}/domains`);
       const domainsData = await domainsRes.json();
-      const domain = domainsData['hydra:member'][0].domain;
+      
+      if (domainsData.error) {
+        throw new Error(domainsData.error);
+      }
+
+      const members = domainsData['hydra:member'];
+      if (!members || members.length === 0) {
+        throw new Error('No email domains available at the moment. Please try again later.');
+      }
+      
+      const domain = members[0].domain;
 
       // 2. Create account
       const username = `${generateRandomString(10)}`;
@@ -372,10 +382,10 @@ export default function App() {
                     
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center text-emerald-700 font-bold">
-                        {selectedMessage.from.name?.[0] || selectedMessage.from.address[0].toUpperCase()}
+                        {selectedMessage.from.name?.[0] || (selectedMessage.from.address?.[0] || '?').toUpperCase()}
                       </div>
                       <div>
-                        <p className="text-sm font-bold text-gray-900">{selectedMessage.from.name}</p>
+                        <p className="text-sm font-bold text-gray-900">{selectedMessage.from.name || 'Unknown'}</p>
                         <p className="text-xs text-gray-500">{selectedMessage.from.address}</p>
                       </div>
                       <div className="ml-auto text-xs text-gray-400 font-medium">

@@ -31,8 +31,14 @@ const proxyRequest = async (req: express.Request, res: express.Response, path: s
       return res.status(204).send();
     }
 
-    const data = await response.json();
-    res.status(response.status).json(data);
+    const contentType = response.headers.get("content-type");
+    if (contentType && contentType.includes("application/json")) {
+      const data = await response.json();
+      res.status(response.status).json(data);
+    } else {
+      const text = await response.text();
+      res.status(response.status).send(text);
+    }
   } catch (error: any) {
     console.error(`Proxy error for ${path}:`, error);
     res.status(500).json({ error: "Failed to fetch from mail service", details: error.message });
