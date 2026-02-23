@@ -40,16 +40,22 @@ const proxyRequest = async (req: express.Request, res: express.Response, path: s
 };
 
 // API Routes
-app.get("/api/mail/domains", (req, res) => proxyRequest(req, res, "/domains"));
-app.post("/api/mail/accounts", (req, res) => proxyRequest(req, res, "/accounts", "POST"));
-app.post("/api/mail/token", (req, res) => proxyRequest(req, res, "/token", "POST"));
-app.get("/api/mail/messages", (req, res) => proxyRequest(req, res, "/messages"));
-app.get("/api/mail/messages/:id", (req, res) => proxyRequest(req, res, `/messages/${req.params.id}`));
-app.delete("/api/mail/messages/:id", (req, res) => proxyRequest(req, res, `/messages/${req.params.id}`, "DELETE"));
+// We use a regex to match routes with or without the /api prefix
+const router = express.Router();
 
-// Health check
-app.get("/api/health", (req, res) => {
+router.get("/mail/domains", (req, res) => proxyRequest(req, res, "/domains"));
+router.post("/mail/accounts", (req, res) => proxyRequest(req, res, "/accounts", "POST"));
+router.post("/mail/token", (req, res) => proxyRequest(req, res, "/token", "POST"));
+router.get("/mail/messages", (req, res) => proxyRequest(req, res, "/messages"));
+router.get("/mail/messages/:id", (req, res) => proxyRequest(req, res, `/messages/${req.params.id}`));
+router.delete("/mail/messages/:id", (req, res) => proxyRequest(req, res, `/messages/${req.params.id}`, "DELETE"));
+
+router.get("/health", (req, res) => {
   res.json({ status: "ok", service: "KAS Temp Mail Proxy" });
 });
+
+// Mount the router on both /api and / for maximum compatibility
+app.use("/api", router);
+app.use("/", router);
 
 export default app;
