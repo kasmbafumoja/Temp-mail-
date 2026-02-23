@@ -72,13 +72,29 @@ export default function App() {
     return Math.random().toString(36).substring(2, 2 + length);
   };
 
+  const safeJson = async (response: Response) => {
+    const text = await response.text();
+    if (!text) return {};
+    try {
+      return JSON.parse(text);
+    } catch (e) {
+      console.error('Failed to parse JSON:', text);
+      return {};
+    }
+  };
+
   const createAccount = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       // 1. Get domains
       const domainsRes = await fetch(`${API_BASE}/domains`);
-      const domainsData = await domainsRes.json();
+      if (!domainsRes.ok) {
+        const errorText = await domainsRes.text();
+        throw new Error(`Domain fetch failed: ${domainsRes.status} ${errorText}`);
+      }
+      
+      const domainsData = await safeJson(domainsRes);
       
       if (domainsData.error) {
         throw new Error(domainsData.error);
@@ -102,8 +118,11 @@ export default function App() {
         body: JSON.stringify({ address, password }),
       });
 
-      if (!createRes.ok) throw new Error('Failed to create account');
-      const accountData = await createRes.json();
+      if (!createRes.ok) {
+        const errorData = await safeJson(createRes);
+        throw new Error(errorData.message || errorData.error || 'Failed to create account');
+      }
+      const accountData = await safeJson(createRes);
 
       // 3. Get token
       const tokenRes = await fetch(`${API_BASE}/token`, {
@@ -112,8 +131,14 @@ export default function App() {
         body: JSON.stringify({ address, password }),
       });
 
-      if (!tokenRes.ok) throw new Error('Failed to get token');
-      const { token } = await tokenRes.json();
+      if (!tokenRes.ok) {
+        const errorData = await safeJson(tokenRes);
+        throw new Error(errorData.message || errorData.error || 'Failed to get token');
+      }
+      const tokenData = await safeJson(tokenRes);
+      const token = tokenData.token;
+
+      if (!token) throw new Error('Token not received from server');
 
       const newAccount = { id: accountData.id, address, token };
       setAccount(newAccount);
@@ -134,8 +159,8 @@ export default function App() {
         headers: { Authorization: `Bearer ${account.token}` },
       });
       if (!res.ok) throw new Error('Failed to fetch messages');
-      const data = await res.json();
-      setMessages(data['hydra:member']);
+      const data = await safeJson(res);
+      setMessages(data['hydra:member'] || []);
     } catch (err: any) {
       console.error(err);
     } finally {
@@ -151,7 +176,7 @@ export default function App() {
         headers: { Authorization: `Bearer ${account.token}` },
       });
       if (!res.ok) throw new Error('Failed to fetch message detail');
-      const data = await res.json();
+      const data = await safeJson(res);
       setSelectedMessage(data);
       
       // Mark as seen locally

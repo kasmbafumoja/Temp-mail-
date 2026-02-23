@@ -31,12 +31,17 @@ const proxyRequest = async (req: express.Request, res: express.Response, path: s
       return res.status(204).send();
     }
 
-    const contentType = response.headers.get("content-type");
-    if (contentType && contentType.includes("application/json")) {
-      const data = await response.json();
+    const text = await response.text();
+    if (!text) {
+      return res.status(response.status).send();
+    }
+
+    try {
+      // Try to parse as JSON if possible
+      const data = JSON.parse(text);
       res.status(response.status).json(data);
-    } else {
-      const text = await response.text();
+    } catch (e) {
+      // If not JSON, send as plain text
       res.status(response.status).send(text);
     }
   } catch (error: any) {
